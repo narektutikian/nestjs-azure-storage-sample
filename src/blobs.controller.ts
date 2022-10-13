@@ -45,4 +45,11 @@ export class BlobsController {
   ) {
     return await this.blobService.deleteBlobObject(containerName, fileName);
   }
+
+  @Post('/download-url')
+  async getDownloadUrl(
+    @Body() body: { containerName: string; blobName: string },
+  ): Promise<any> {
+    return await this.blobService.getDownloadUrl(body);
+  }
 }
