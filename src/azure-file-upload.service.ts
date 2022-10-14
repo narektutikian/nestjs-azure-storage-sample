@@ -63,24 +63,11 @@ export class AzureFileUploadService {
     };
   }
 
-  async getDownloadUrl(blob: { containerName: string; blobName: string }): Promise<any> {
-    const {containerName, blobName} = blob;
-    const blobServiceClient = new BlobServiceClient(
-      this.blobServiceClient.url,
-      this.blobServiceClient.credential,
-    );
-    const blobSAS = generateBlobSASQueryParameters(
-      {
-        containerName,
-        blobName,
-        permissions: ContainerSASPermissions.parse('r'),
-        startsOn: new Date(),
-        expiresOn: new Date(new Date().valueOf() + 5 * 60 * 1000),
-      },
-      this.blobServiceClient.credential,
-    ).toString();
-    const sasUrl = `${blobServiceClient.url}${containerName}/${blobName}?${blobSAS}`;
-    return sasUrl;
+  getDownloadUrl(blob: { containerName: string; blobName: string }): {
+    sasUrl: string;
+  } {
+    const sasUrl = this.createSrsUrl(blob, 'r');
+    return { sasUrl };
   }
 
   async deleteBlobObject(containerName: string, blobName: string) {
@@ -162,13 +149,55 @@ export class AzureFileUploadService {
     return blobName;
   }
 
-  async accessResource(request: {url: string}): Promise<any> {
+  async accessResource(request: { url: string }): Promise<any> {
     try {
       const blockBlobClient = new BlockBlobClient(request.url);
       await blockBlobClient.downloadToFile(__dirname + '/../nkar.jpeg');
-  } catch (err) {
-    console.log(err)
-  }
+    } catch (err) {
+      console.log(err);
+    }
     return __dirname;
+  }
+
+  async createUploadUrl(uploadUrlBody: {
+    containerName: string;
+    fileName: string;
+  }): Promise<any> {
+    const { containerName, fileName } = uploadUrlBody;
+    // Create a unique name for the blob
+    const blobName = `${fileName.split('.').shift()}-${uuidv1()}.${fileName
+      .split('.')
+      .pop()}`;
+    // const containerClient = this.blobServiceClient.getContainerClient(containerName);
+    // Get a block blob client
+    // const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+    const url = this.createSrsUrl({ containerName, blobName }, 'w');
+    return { url, blobName, containerName };
+  }
+
+  private createSrsUrl(
+    blob: {
+      containerName: string;
+      blobName: string;
+    },
+    permission: 'r' | 'w',
+  ): string {
+    const { containerName, blobName } = blob;
+    const blobServiceClient = new BlobServiceClient(
+      this.blobServiceClient.url,
+      this.blobServiceClient.credential,
+    );
+    const blobSAS = generateBlobSASQueryParameters(
+      {
+        containerName,
+        blobName,
+        permissions: ContainerSASPermissions.parse(permission),
+        startsOn: new Date(),
+        expiresOn: new Date(new Date().valueOf() + 30 * 60 * 1000),
+      },
+      this.blobServiceClient.credential,
+    ).toString();
+    const sasUrl = `${blobServiceClient.url}${containerName}/${blobName}?${blobSAS}`;
+    return sasUrl;
   }
 }

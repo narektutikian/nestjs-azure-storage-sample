@@ -52,4 +52,9 @@ export class BlobsController {
   ): Promise<any> {
     return await this.blobService.getDownloadUrl(body);
   }
+
+  @Post('/upload-url')
+  async createUploadUrl(@Body() body: { containerName: string; fileName: string }): Promise<any> {
+    return await this.blobService.createUploadUrl(body);
+  }
 }
